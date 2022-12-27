@@ -10,18 +10,14 @@ interface Todo {
   text: string
 }
 
-let todos: Todo[] = []
-
 router.get('/todos', async (ctx) => {
   const todos = await getDB().collection('todos').find()
-  const transformedToDos = await todos.map(
-    (todo: { _id: string; text: string }) => {
-      return {
-        id: todo._id.toString(),
-        text: todo.text,
-      }
-    },
-  )
+  const transformedToDos = await todos.map((todo) => {
+    return {
+      id: todo._id.toString(),
+      text: todo.text,
+    }
+  })
   ctx.response.body = { todos: transformedToDos }
 })
 
@@ -40,19 +36,28 @@ router.post('/todos', async (ctx) => {
 })
 
 router.put('/todos/:todoId', async (ctx) => {
-  const tid = ctx.params.todoId
+  const tid = ctx.params.todoId!
   const data = await ctx.request.body()
   const finalData = await data.value
-  const todoIndex = todos.findIndex((todo) => {
-    return todo.id === tid
-  })
-  todos[todoIndex] = { id: todos[todoIndex].id, text: finalData.text }
+
+  await getDB()
+    .collection('todos')
+    .updateOne(
+      { _id: new ObjectId(tid) },
+      {
+        $set: { text: finalData.text },
+      },
+    )
+
   ctx.response.body = { message: 'Updated todo' }
 })
 
-router.delete('/todos/:todoId', (ctx) => {
-  const tid = ctx.params.todoId
-  todos = todos.filter((todo) => todo.id !== tid)
+router.delete('/todos/:todoId', async (ctx) => {
+  const tid = ctx.params.todoId!
+  await getDB()
+    .collection('todos')
+    .deleteOne({ _id: new ObjectId(tid) })
+
   ctx.response.body = { message: 'Deleted todo' }
 })
 
